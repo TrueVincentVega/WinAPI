@@ -6,6 +6,7 @@ HWND hEdit2;
 
 CHAR str1[] = { "Hello!..." };
 CHAR str2[] = { 0 };
+CHAR str3[] = "Привіт ";
 
 BOOL CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -39,7 +40,11 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			SendMessage(hEdit2, WM_SETTEXT, 0, (LPARAM)str2);
 			break;
 		case IDOK:
-			MessageBox(hwnd, "Була натиснута кнопка ТАК", "Info", MB_OK | MB_ICONINFORMATION);
+			//CHAR name[255] = {};
+			//GetDlgItemText(hand, IDC_EDIT1, name, 255);
+			SendMessage(hEdit1, WM_GETTEXT, 255, (LPARAM)str2);
+			strcat_s(str3, 25, str2);
+			MessageBox(hwnd, str3, "Info", MB_OK | MB_ICONINFORMATION);
 		}
 		break;
 	case IDCANCEL:
