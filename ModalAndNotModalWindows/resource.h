@@ -4,10 +4,10 @@
 //
 #define IDD_MAIN                        101
 #define IDD_MODAL                       103
-#define IDD_NMODAL                      104
 #define IDD_NOT_MODAL                   104
 #define ID_BTN_MODAL                    1001
 #define ID_BTN_NMODAL                   1002
+#define ID_BTN_NOT_MODAL                1002
 
 // Next default values for new objects
 // 
