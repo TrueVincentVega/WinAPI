@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DialogBox", "DialogBox\Dial
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ComboBox", "ComboBox\ComboBox.vcxproj", "{146B90F9-2AA8-4140-A6AA-C25241FEA7CD}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ModalAndNotModalWindows", "ModalAndNotModalWindows\ModalAndNotModalWindows.vcxproj", "{6005ACFE-0A5F-4C8A-A316-7752BD153E00}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -41,6 +43,14 @@ Global
 		{146B90F9-2AA8-4140-A6AA-C25241FEA7CD}.Release|x64.Build.0 = Release|x64
 		{146B90F9-2AA8-4140-A6AA-C25241FEA7CD}.Release|x86.ActiveCfg = Release|Win32
 		{146B90F9-2AA8-4140-A6AA-C25241FEA7CD}.Release|x86.Build.0 = Release|Win32
+		{6005ACFE-0A5F-4C8A-A316-7752BD153E00}.Debug|x64.ActiveCfg = Debug|x64
+		{6005ACFE-0A5F-4C8A-A316-7752BD153E00}.Debug|x64.Build.0 = Debug|x64
+		{6005ACFE-0A5F-4C8A-A316-7752BD153E00}.Debug|x86.ActiveCfg = Debug|Win32
+		{6005ACFE-0A5F-4C8A-A316-7752BD153E00}.Debug|x86.Build.0 = Debug|Win32
+		{6005ACFE-0A5F-4C8A-A316-7752BD153E00}.Release|x64.ActiveCfg = Release|x64
+		{6005ACFE-0A5F-4C8A-A316-7752BD153E00}.Release|x64.Build.0 = Release|x64
+		{6005ACFE-0A5F-4C8A-A316-7752BD153E00}.Release|x86.ActiveCfg = Release|Win32
+		{6005ACFE-0A5F-4C8A-A316-7752BD153E00}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
