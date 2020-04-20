@@ -10,6 +10,29 @@ BOOL CALLBACK DlgMain(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_INITDIALOG:
 		//hInst = GetModuleHandle(NULL);
 		break;
+	case WM_CTLCOLORSTATIC:
+	{
+		if ((HWND)lParam == GetDlgItem(hwnd, IDC_COLOR))
+		{
+			HDC hdc = (HDC)wParam;
+			SetBkMode(hdc, TRANSPARENT);
+			SetTextColor(hdc, RGB(0, 20, 255));
+			return(int)GetStockObject(NULL_BRUSH);
+		}
+	}
+	break;
+
+	case WM_CTLCOLOREDIT:
+	{
+		HDC hdc = (HDC)wParam;
+		SetBkMode(hdc, OPAQUE);
+		SetBkColor(hdc, RGB(200, 200, 255));
+		HBRUSH hBrushColor = CreateSolidBrush(RGB(0, 255, 0));
+		SetTextColor(hdc, RGB(180, 0, 0));
+		return(LRESULT)hBrushColor;
+	}
+	break;
+
 	case WM_COMMAND:
 		switch (LOWORD(wParam))
 		{
