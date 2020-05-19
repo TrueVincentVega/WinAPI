@@ -6,6 +6,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL	CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL	LoadTextFileToEdit(HWND hwnd, LPCTSTR pszFileName);
 BOOL	SaveTextFileFromEdit(HWND hwnd, LPCSTR pszFileName);
+LPSTR pszText;
+LPSTR pszFileText;
+
+VOID DoFileOpen(HWND hwnd);
+VOID DoFileSaveAs(HWND hwnd);
+
+BOOL FileChanged(HWND hEdit);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -76,6 +83,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		hSubMenu = CreatePopupMenu();
 		AppendMenu(hSubMenu, MF_STRING, ID_FILE_NEW, "&New");
 		AppendMenu(hSubMenu, MF_STRING, ID_FILE_OPEN, "&Open");
+		AppendMenu(hSubMenu, MF_STRING, ID_FILE_SAVE, "&Save");
 		AppendMenu(hSubMenu, MF_STRING, ID_FILE_SAVEAS, "&SaveAs");
 		AppendMenu(hSubMenu, MF_STRING, ID_FILE_EXIT, "E&xit");
 		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT)hSubMenu, "&File");
@@ -126,48 +134,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 		case ID_FILE_OPEN:
 		{
-			// Создадим стандартное окно открытия файла:
-			OPENFILENAME ofn;
+			DoFileOpen(hwnd);
+		}
+		break;
+		case ID_FILE_SAVE:
+		{
 			CHAR szFileName[MAX_PATH]{};
-
-			ZeroMemory(&ofn, sizeof(ofn));
-
-			ofn.lStructSize = sizeof(ofn);
-			ofn.hwndOwner = hwnd;
-			ofn.lpstrFilter = szFilter; // filter
-			ofn.lpstrFile = szFileName;
-			ofn.nMaxFile = MAX_PATH; // максим. длинна пути
-			ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
-			//ofn.lpstrDefExt = "txt";
-			if (GetOpenFileName(&ofn))
-			{
-				// Происходит загрузка файла...
-				HWND hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
-				LoadTextFileToEdit(hEdit, szFileName);
-			}
-			
+			if (szFileName[0])
+				SaveTextFileFromEdit(GetDlgItem(hwnd, IDC_MAIN_EDIT), szFileName);
+			else
+				SendMessage(hwnd, WM_COMMAND, ID_FILE_SAVEAS, 0);
 		}
 		break;
 		case ID_FILE_SAVEAS:
 		{
-			OPENFILENAME ofn;
-			CHAR szFileName[MAX_PATH]{};
-
-			ZeroMemory(&ofn, sizeof(ofn));
-
-			ofn.lStructSize = sizeof(ofn);
-			ofn.hwndOwner = hwnd;
-			ofn.lpstrFilter = szFilter;
-			ofn.lpstrFile = szFileName;
-			ofn.nMaxFile = MAX_PATH;
-			ofn.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT;
-			ofn.lpstrDefExt = "txt";
-
-			if (GetSaveFileName(&ofn))
-			{
-				HWND hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
-				SaveTextFileFromEdit(hEdit, szFileName);
-			}
+			DoFileSaveAs(hwnd);
 		}
 		break;
 		case ID_FILE_EXIT:
@@ -188,7 +169,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_CLOSE:
 		//if (MessageBox(hwnd, "Вы действительно хотите закрыть окно", "Вы уверены?", MB_YESNO|MB_ICONQUESTION) == IDYES)
 	{
-		DestroyWindow(hwnd);
+		if (FileChanged(GetDlgItem(hwnd, IDC_MAIN_EDIT)))
+		{
+			switch (MessageBox(hwnd, "Сохранить изменения в файле?", "Не так быстро...", MB_YESNOCANCEL | MB_ICONQUESTION))
+			{
+			case IDYES: SendMessage(hwnd, WM_COMMAND, ID_FILE_SAVE, 0);
+			case IDNO: DestroyWindow(hwnd);
+			case IDCANCEL: break;
+			}
+		}
+		else
+			DestroyWindow(hwnd);
 	}
 	break;
 	case WM_DESTROY:
@@ -233,9 +224,8 @@ BOOL	LoadTextFileToEdit(HWND hEdit, LPCTSTR pszFileName)
 	if (hFile != INVALID_HANDLE_VALUE) //Если файл создался продолжаем работу сним
 	{
 		DWORD dwFileSize = GetFileSize(hFile, NULL);
-		if (dwFileSize != UINT_MAX)
-		{
-			LPSTR pszFileText = (LPSTR)GlobalAlloc(GPTR, dwFileSize + 1);
+		if (dwFileSize != UINT_MAX)GlobalFree(pszFileText);
+			pszFileText = (LPSTR)GlobalAlloc(GPTR, dwFileSize + 1);
 			if (pszFileText)
 			{
 				DWORD dwRead;
@@ -245,12 +235,11 @@ BOOL	LoadTextFileToEdit(HWND hEdit, LPCTSTR pszFileName)
 					pszFileText[dwFileSize] = 0;
 					if (SetWindowText(hEdit, pszFileText))bSuccess = TRUE;
 				}
-				GlobalFree(pszFileText);
+				
 			}
 
-		}
-		CloseHandle(hFile);
 	}
+		CloseHandle(hFile);
 	return bSuccess;
 }
 
@@ -263,7 +252,7 @@ BOOL	SaveTextFileFromEdit(HWND hEdit, LPCSTR pszFileName)
 		DWORD dwTextLength = GetWindowTextLength(hEdit);
 		if (dwTextLength > 0)
 		{
-			LPSTR pszText = (LPSTR)GlobalAlloc(GPTR, dwTextLength + 1);
+			pszText = (LPSTR)GlobalAlloc(GPTR, dwTextLength + 1);
 			if (pszText != NULL)
 			{
 				if (GetWindowText(hEdit, pszText, dwTextLength + 1))
@@ -277,4 +266,66 @@ BOOL	SaveTextFileFromEdit(HWND hEdit, LPCSTR pszFileName)
 		}
 	}
 	return bSuccess;
+}
+
+
+VOID DoFileOpen(HWND hwnd)
+{
+	// Создадим стандартное окно открытия файла:
+	OPENFILENAME ofn;
+	CHAR szFileName[MAX_PATH]{};
+
+	ZeroMemory(&ofn, sizeof(ofn));
+
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = hwnd;
+	ofn.lpstrFilter = szFilter; // filter
+	ofn.lpstrFile = szFileName;
+	ofn.nMaxFile = MAX_PATH; // максим. длинна пути
+	ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+	//ofn.lpstrDefExt = "txt";
+	if (GetOpenFileName(&ofn))
+	{
+		// Происходит загрузка файла...
+		HWND hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
+		LoadTextFileToEdit(hEdit, szFileName);
+	}
+}
+
+VOID DoFileSaveAs(HWND hwnd)
+{
+	OPENFILENAME ofn;
+	CHAR szFileName[MAX_PATH]{};
+
+	ZeroMemory(&ofn, sizeof(ofn));
+
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = hwnd;
+	ofn.lpstrFilter = szFilter;
+	ofn.lpstrFile = szFileName;
+	ofn.nMaxFile = MAX_PATH;
+	ofn.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT;
+	ofn.lpstrDefExt = "txt";
+
+	if (GetSaveFileName(&ofn))
+	{
+		HWND hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
+		SaveTextFileFromEdit(hEdit, szFileName);
+	}
+}
+
+BOOL FileChanged(HWND hEdit)
+{
+	BOOL bFileWasChanged = FALSE;
+	DWORD dwCurrentTextLength = GetWindowTextLength(hEdit);
+	DWORD dwFileTextLength = pszFileText ? strlen(pszFileText) : 0;
+	if (dwCurrentTextLength != dwFileTextLength)bFileWasChanged = TRUE;
+	else
+	{
+		LPSTR pszCurrentText = (LPSTR)GlobalAlloc(GPTR, dwCurrentTextLength + 1);
+		GetWindowTextA(hEdit, pszCurrentText, dwCurrentTextLength + 1);
+		if (pszText && strcmp(pszFileText, pszCurrentText))bFileWasChanged = TRUE;
+		GlobalFree(pszCurrentText);
+	}
+	return bFileWasChanged;
 }
