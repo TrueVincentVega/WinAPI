@@ -76,7 +76,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		hSubMenu = CreatePopupMenu();
 		AppendMenu(hSubMenu, MF_STRING, ID_FILE_NEW, "&New");
 		AppendMenu(hSubMenu, MF_STRING, ID_FILE_OPEN, "&Open");
-		AppendMenu(hSubMenu, MF_STRING, ID_FILE_SAVE, "&Save");
+		AppendMenu(hSubMenu, MF_STRING, ID_FILE_SAVEAS, "&SaveAs");
 		AppendMenu(hSubMenu, MF_STRING, ID_FILE_EXIT, "E&xit");
 		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT)hSubMenu, "&File");
 
@@ -148,7 +148,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			
 		}
 		break;
-		case ID_FILE_SAVE:
+		case ID_FILE_SAVEAS:
 		{
 			OPENFILENAME ofn;
 			CHAR szFileName[MAX_PATH]{};
