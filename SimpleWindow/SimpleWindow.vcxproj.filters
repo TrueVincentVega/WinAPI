@@ -33,5 +33,8 @@
     <Image Include="Document.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="ICON1.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>
