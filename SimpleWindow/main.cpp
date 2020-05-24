@@ -6,13 +6,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL	CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 BOOL	LoadTextFileToEdit(HWND hwnd, LPCTSTR pszFileName);
 BOOL	SaveTextFileFromEdit(HWND hwnd, LPCSTR pszFileName);
-LPSTR pszText;
+//LPSTR pszText;
 LPSTR pszFileText;
+CHAR szFileName[MAX_PATH]{}; // Глобальная переменная имени файла
 
-VOID DoFileOpen(HWND hwnd);
+BOOL __stdcall DoFileOpen(HWND hwnd); // _stdcall ф-кция очищает стек
 VOID DoFileSaveAs(HWND hwnd);
 
 BOOL FileChanged(HWND hEdit);
+
+VOID WatchChanges(HWND hwnd, BOOL (__stdcall *Action)(HWND))
+{
+	if (FileChanged(GetDlgItem(hwnd, IDC_MAIN_EDIT)))
+	{
+		switch (MessageBox(hwnd, "Сохранить изменения в файле?", "Не так быстро...", MB_YESNOCANCEL | MB_ICONQUESTION))
+		{
+		case IDYES: SendMessage(hwnd, WM_COMMAND, ID_FILE_SAVE, 0);
+		case IDNO: Action(hwnd);
+		case IDCANCEL: break;
+		}
+	}
+	else
+		Action(hwnd);
+}
+
+
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -82,9 +100,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		hSubMenu = CreatePopupMenu();
 		AppendMenu(hSubMenu, MF_STRING, ID_FILE_NEW, "&New");
+		AppendMenu(hSubMenu, MF_SEPARATOR, 0, 0);
 		AppendMenu(hSubMenu, MF_STRING, ID_FILE_OPEN, "&Open");
+		AppendMenu(hSubMenu, MF_SEPARATOR, 0, 0);
 		AppendMenu(hSubMenu, MF_STRING, ID_FILE_SAVE, "&Save");
 		AppendMenu(hSubMenu, MF_STRING, ID_FILE_SAVEAS, "&SaveAs");
+		AppendMenu(hSubMenu, MF_SEPARATOR, 0, 0);
 		AppendMenu(hSubMenu, MF_STRING, ID_FILE_EXIT, "E&xit");
 		AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT)hSubMenu, "&File");
 
@@ -134,16 +155,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 		case ID_FILE_OPEN:
 		{
-			DoFileOpen(hwnd);
+			WatchChanges(hwnd, DoFileOpen);
 		}
 		break;
 		case ID_FILE_SAVE:
 		{
-			CHAR szFileName[MAX_PATH]{};
+			/*CHAR szFileName[MAX_PATH]{};
 			if (szFileName[0])
 				SaveTextFileFromEdit(GetDlgItem(hwnd, IDC_MAIN_EDIT), szFileName);
 			else
+				SendMessage(hwnd, WM_COMMAND, ID_FILE_SAVEAS, 0);*/
+			if (strlen(szFileName))
+			{
+				SaveTextFileFromEdit(GetDlgItem(hwnd, IDC_MAIN_EDIT), szFileName);
+			}
+			else
+			{
 				SendMessage(hwnd, WM_COMMAND, ID_FILE_SAVEAS, 0);
+			}
 		}
 		break;
 		case ID_FILE_SAVEAS:
@@ -152,7 +181,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 		case ID_FILE_EXIT:
-			DestroyWindow(hwnd);
+			//DestroyWindow(hwnd);
+			SendMessage(hwnd, WM_CLOSE, 0, 0);
 			break;
 		case ID_HELP_ABOUT:
 		{
@@ -169,17 +199,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	case WM_CLOSE:
 		//if (MessageBox(hwnd, "Вы действительно хотите закрыть окно", "Вы уверены?", MB_YESNO|MB_ICONQUESTION) == IDYES)
 	{
-		if (FileChanged(GetDlgItem(hwnd, IDC_MAIN_EDIT)))
-		{
-			switch (MessageBox(hwnd, "Сохранить изменения в файле?", "Не так быстро...", MB_YESNOCANCEL | MB_ICONQUESTION))
-			{
-			case IDYES: SendMessage(hwnd, WM_COMMAND, ID_FILE_SAVE, 0);
-			case IDNO: DestroyWindow(hwnd);
-			case IDCANCEL: break;
-			}
-		}
-		else
-			DestroyWindow(hwnd);
+		WatchChanges(hwnd, DestroyWindow);
 	}
 	break;
 	case WM_DESTROY:
@@ -224,7 +244,9 @@ BOOL	LoadTextFileToEdit(HWND hEdit, LPCTSTR pszFileName)
 	if (hFile != INVALID_HANDLE_VALUE) //Если файл создался продолжаем работу сним
 	{
 		DWORD dwFileSize = GetFileSize(hFile, NULL);
-		if (dwFileSize != UINT_MAX)GlobalFree(pszFileText);
+		if (dwFileSize != UINT_MAX)
+		{
+			if(pszFileText)GlobalFree(pszFileText);
 			pszFileText = (LPSTR)GlobalAlloc(GPTR, dwFileSize + 1);
 			if (pszFileText)
 			{
@@ -235,9 +257,9 @@ BOOL	LoadTextFileToEdit(HWND hEdit, LPCTSTR pszFileName)
 					pszFileText[dwFileSize] = 0;
 					if (SetWindowText(hEdit, pszFileText))bSuccess = TRUE;
 				}
-				
-			}
 
+			}
+		}
 	}
 		CloseHandle(hFile);
 	return bSuccess;
@@ -252,15 +274,15 @@ BOOL	SaveTextFileFromEdit(HWND hEdit, LPCSTR pszFileName)
 		DWORD dwTextLength = GetWindowTextLength(hEdit);
 		if (dwTextLength > 0)
 		{
-			pszText = (LPSTR)GlobalAlloc(GPTR, dwTextLength + 1);
-			if (pszText != NULL)
+			if(pszFileText)GlobalFree(pszFileText);
+			pszFileText = (LPSTR)GlobalAlloc(GPTR, dwTextLength + 1);
+			if (pszFileText != NULL)
 			{
-				if (GetWindowText(hEdit, pszText, dwTextLength + 1))
+				if (GetWindowText(hEdit, pszFileText, dwTextLength + 1))
 				{
 					DWORD dwWritten;
-					if (WriteFile(hFile, pszText, dwTextLength, &dwWritten, NULL))bSuccess = TRUE;
+					if (WriteFile(hFile, pszFileText, dwTextLength, &dwWritten, NULL))bSuccess = TRUE;
 				}
-				GlobalFree(pszText);
 			}
 			CloseHandle(hFile);
 		}
@@ -269,11 +291,11 @@ BOOL	SaveTextFileFromEdit(HWND hEdit, LPCSTR pszFileName)
 }
 
 
-VOID DoFileOpen(HWND hwnd)
+BOOL __stdcall DoFileOpen(HWND hwnd)
 {
 	// Создадим стандартное окно открытия файла:
 	OPENFILENAME ofn;
-	CHAR szFileName[MAX_PATH]{};
+	//CHAR szFileName[MAX_PATH]{};
 
 	ZeroMemory(&ofn, sizeof(ofn));
 
@@ -289,13 +311,15 @@ VOID DoFileOpen(HWND hwnd)
 		// Происходит загрузка файла...
 		HWND hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
 		LoadTextFileToEdit(hEdit, szFileName);
+		return TRUE;
 	}
+	return FALSE;
 }
 
 VOID DoFileSaveAs(HWND hwnd)
 {
 	OPENFILENAME ofn;
-	CHAR szFileName[MAX_PATH]{};
+	//CHAR szFileName[MAX_PATH]{};
 
 	ZeroMemory(&ofn, sizeof(ofn));
 
@@ -316,7 +340,8 @@ VOID DoFileSaveAs(HWND hwnd)
 
 BOOL FileChanged(HWND hEdit)
 {
-	BOOL bFileWasChanged = FALSE;
+	/////////////// Точно рабочий вариант////////////////////////
+	/*BOOL bFileWasChanged = FALSE;
 	DWORD dwCurrentTextLength = GetWindowTextLength(hEdit);
 	DWORD dwFileTextLength = pszFileText ? strlen(pszFileText) : 0;
 	if (dwCurrentTextLength != dwFileTextLength)bFileWasChanged = TRUE;
@@ -324,7 +349,26 @@ BOOL FileChanged(HWND hEdit)
 	{
 		LPSTR pszCurrentText = (LPSTR)GlobalAlloc(GPTR, dwCurrentTextLength + 1);
 		GetWindowTextA(hEdit, pszCurrentText, dwCurrentTextLength + 1);
-		if (pszText && strcmp(pszFileText, pszCurrentText))bFileWasChanged = TRUE;
+		if (pszFileText && strcmp(pszFileText, pszCurrentText))bFileWasChanged = TRUE;
+		GlobalFree(pszCurrentText);
+	}
+	return bFileWasChanged;*/
+	///////////////////////////////////////
+
+	BOOL bFileWasChanged = FALSE;
+	DWORD dwCurrentTextLength = GetWindowTextLength(hEdit);
+	DWORD dwFileTextLength = pszFileText ? strlen(pszFileText) : 0;
+	if (dwCurrentTextLength != dwFileTextLength)bFileWasChanged = TRUE;
+	else
+	{
+		//	Если строки совпадают по размеру, то их нужно сравнивать
+		//	1. Выделяем память, для текста в редакторе:
+		LPSTR pszCurrentText = (LPSTR)GlobalAlloc(GPTR, dwCurrentTextLength + 1);
+		//	2. Загружаем текст из редактора в строку:
+		GetWindowTextA(hEdit, pszCurrentText, dwCurrentTextLength + 1);
+		//	3. Сравниваем переменную и строки
+		if (pszFileText && strcmp(pszFileText, pszCurrentText))bFileWasChanged = TRUE;
+		//	4. Очищаем память, которая использовалась для текста в редакторе
 		GlobalFree(pszCurrentText);
 	}
 	return bFileWasChanged;
