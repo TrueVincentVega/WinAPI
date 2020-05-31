@@ -8,6 +8,13 @@
 #define IDD_ABOUT                       103
 #define IDR_MENU2                       105
 #define IDC_MAIN_EDIT                   105
+
+#define HOTKEY_NEW						201
+#define HOTKEY_OPEN						202
+#define HOTKEY_SAVE						203
+#define HOTKEY_SAVEAS					204
+#define HOTKEY_ABOUT					214
+
 #define ID_HELP_ABOUT                   40001
 #define ID_FILE_NEW                     40002
 #define ID_FILE_OPEN                    40003

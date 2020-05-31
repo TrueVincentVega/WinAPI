@@ -15,7 +15,7 @@ VOID DoFileSaveAs(HWND hwnd);
 
 BOOL FileChanged(HWND hEdit);
 
-VOID WatchChanges(HWND hwnd, BOOL (__stdcall *Action)(HWND))
+VOID WatchChanges(HWND hwnd, BOOL(__stdcall* Action)(HWND))
 {
 	if (FileChanged(GetDlgItem(hwnd, IDC_MAIN_EDIT)))
 	{
@@ -28,6 +28,15 @@ VOID WatchChanges(HWND hwnd, BOOL (__stdcall *Action)(HWND))
 	}
 	else
 		Action(hwnd);
+}
+
+VOID SetWindowTitle(HWND hEdit)
+{
+	CHAR szTitle[MAX_PATH] = "SimpleWindowEdit - ";
+	LPSTR lpszNameOnly = strrchr(szFileName, '\\') + 1;
+	strcat_s(szTitle, MAX_PATH, lpszNameOnly);
+	HWND hwndParent = GetParent(hEdit);
+	SetWindowText(hwndParent, szTitle);
 }
 
 
@@ -133,24 +142,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		HICON hIcon = (HICON)LoadImage(NULL, "Document.ico", IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
 		SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
 
-			//Text editor:
+		//Text editor:
 		RECT rect;
 		GetClientRect(hwnd, &rect);
 
-			HWND hEdit = CreateWindowEx
-			(
-				WS_EX_CLIENTEDGE, "Edit", "",
-				WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
-				0, 0, rect.right, rect.bottom,
-				hwnd,
-				(HMENU)IDC_MAIN_EDIT,
-				GetModuleHandle(NULL),
-				NULL
-			);
-			if (hEdit == NULL)
-				MessageBox(hwnd, "Can not create edit control", "Error", MB_OK | MB_ICONERROR);
-				if (szFileName[0])
-					LoadTextFileToEdit(hEdit, szFileName);
+		HWND hEdit = CreateWindowEx
+		(
+			WS_EX_CLIENTEDGE, "Edit", "",
+			WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
+			0, 0, rect.right, rect.bottom,
+			hwnd,
+			(HMENU)IDC_MAIN_EDIT,
+			GetModuleHandle(NULL),
+			NULL
+		);
+		if (hEdit == NULL)
+			MessageBox(hwnd, "Can not create edit control", "Error", MB_OK | MB_ICONERROR);
+		if (szFileName[0])
+			LoadTextFileToEdit(hEdit, szFileName);
 
 		// Красивый шрифт для написания текста в окне
 		HFONT hDefault = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
@@ -160,6 +169,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		{
 			LoadTextFileToEdit(GetDlgItem(hwnd, IDC_MAIN_EDIT), szFileName);
 		}
+		/////////////////////////////////////////////////////////////////
+		///////////////	HOTKEYS	/////////////////////////////////////////
+		/////////////////////////////////////////////////////////////////
+		RegisterHotKey(hwnd, HOTKEY_NEW, MOD_CONTROL, 'N');
+		RegisterHotKey(hwnd, HOTKEY_OPEN, MOD_CONTROL, 'O');
+		RegisterHotKey(hwnd, HOTKEY_SAVE, MOD_CONTROL, 'S');
+		RegisterHotKey(hwnd, HOTKEY_SAVEAS, MOD_CONTROL + MOD_ALT, 'S');
+		RegisterHotKey(hwnd, HOTKEY_ABOUT,0, VK_F1);
+		/////////////////////////////////////////////////////////////////
 	}
 	break;
 
@@ -179,6 +197,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		DragFinish(hDrop);
 	}
 	break;
+	case WM_HOTKEY:
+		switch (wParam)
+		{
+		case HOTKEY_NEW:SendMessage(hwnd, WM_COMMAND, ID_FILE_NEW, 0); break;
+		case HOTKEY_OPEN:SendMessage(hwnd, WM_COMMAND, ID_FILE_OPEN, 0); break;
+		case HOTKEY_SAVE:SendMessage(hwnd, WM_COMMAND, ID_FILE_SAVE, 0); break;
+		case HOTKEY_SAVEAS:SendMessage(hwnd, WM_COMMAND, ID_FILE_SAVEAS, 0); break;
+		case HOTKEY_ABOUT:SendMessage(hwnd, WM_COMMAND, ID_HELP_ABOUT, 0); break;
+	
+		}
+		break;
 	case WM_COMMAND:
 		switch (LOWORD(wParam))
 		{
@@ -275,7 +304,7 @@ BOOL	LoadTextFileToEdit(HWND hEdit, LPCTSTR pszFileName)
 		DWORD dwFileSize = GetFileSize(hFile, NULL);
 		if (dwFileSize != UINT_MAX)
 		{
-			if(pszFileText)GlobalFree(pszFileText);
+			if (pszFileText)GlobalFree(pszFileText);
 			pszFileText = (LPSTR)GlobalAlloc(GPTR, dwFileSize + 1);
 			if (pszFileText)
 			{
@@ -284,13 +313,17 @@ BOOL	LoadTextFileToEdit(HWND hEdit, LPCTSTR pszFileName)
 				if (ReadFile(hFile, pszFileText, dwFileSize, &dwRead, NULL))
 				{
 					pszFileText[dwFileSize] = 0;
-					if (SetWindowText(hEdit, pszFileText))bSuccess = TRUE;
+					if (SetWindowText(hEdit, pszFileText))
+					{
+						bSuccess = TRUE;
+						SetWindowTitle(hEdit);
+					}
 				}
 
 			}
 		}
 	}
-		CloseHandle(hFile);
+	CloseHandle(hFile);
 	return bSuccess;
 }
 
@@ -303,14 +336,18 @@ BOOL	SaveTextFileFromEdit(HWND hEdit, LPCSTR pszFileName)
 		DWORD dwTextLength = GetWindowTextLength(hEdit);
 		if (dwTextLength > 0)
 		{
-			if(pszFileText)GlobalFree(pszFileText);
+			if (pszFileText)GlobalFree(pszFileText);
 			pszFileText = (LPSTR)GlobalAlloc(GPTR, dwTextLength + 1);
 			if (pszFileText != NULL)
 			{
 				if (GetWindowText(hEdit, pszFileText, dwTextLength + 1))
 				{
 					DWORD dwWritten;
-					if (WriteFile(hFile, pszFileText, dwTextLength, &dwWritten, NULL))bSuccess = TRUE;
+					if (WriteFile(hFile, pszFileText, dwTextLength, &dwWritten, NULL))
+					{
+						bSuccess = TRUE;
+						SetWindowTitle(hEdit);
+					}
 				}
 			}
 			CloseHandle(hFile);
