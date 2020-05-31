@@ -34,6 +34,14 @@ VOID WatchChanges(HWND hwnd, BOOL (__stdcall *Action)(HWND))
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow)
 {
+	if (lpCmdLine[0])
+	{
+		//strcpy_s(szFileName, MAX_PATH, lpCmdLine);
+		for (int i = 0, j = 0; lpCmdLine[i]; i++)
+		{
+			if (lpCmdLine[i] != '\"')szFileName[j++] = lpCmdLine[i];
+		}
+	}
 	//1) Регистрация класса окна:
 	CONST CHAR SZ_CLASS_NAME[] = "myWindowClass";
 	WNDCLASSEX wc;
@@ -61,7 +69,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPSTR lpCmdLine, in
 	//2) Создание окна:
 	HWND hwnd = CreateWindowEx
 	(
-		WS_EX_CLIENTEDGE,
+		WS_EX_CLIENTEDGE | WS_EX_ACCEPTFILES,
 		SZ_CLASS_NAME,
 		"Title of my Window",
 		WS_OVERLAPPEDWINDOW,
@@ -73,6 +81,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPSTR lpCmdLine, in
 	{
 		MessageBox(NULL, "Window was not created", "Error", MB_OK | MB_ICONERROR);
 		return 0;
+	}
+
+	MessageBox(hwnd, lpCmdLine, "Info", MB_OK | MB_ICONINFORMATION);
+	if (lpCmdLine[0])
+	{
+		strcpy_s(szFileName, sizeof(szFileName), lpCmdLine);
 	}
 
 	ShowWindow(hwnd, nCmdShow);
@@ -133,12 +147,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				GetModuleHandle(NULL),
 				NULL
 			);
-		if (hEdit == NULL)
-			MessageBox(hwnd, "Can not create edit control", "Error", MB_OK | MB_ICONERROR);
+			if (hEdit == NULL)
+				MessageBox(hwnd, "Can not create edit control", "Error", MB_OK | MB_ICONERROR);
+				if (szFileName[0])
+					LoadTextFileToEdit(hEdit, szFileName);
 
 		// Красивый шрифт для написания текста в окне
 		HFONT hDefault = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
 		SendMessage(hEdit, WM_SETFONT, (WPARAM)hDefault, MAKELPARAM(FALSE, 0));
+
+		if (szFileName[0])
+		{
+			LoadTextFileToEdit(GetDlgItem(hwnd, IDC_MAIN_EDIT), szFileName);
+		}
 	}
 	break;
 
@@ -148,6 +169,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		GetClientRect(hwnd, &rcClient);
 		HWND hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
 		SetWindowPos(hEdit, NULL, 0, 0, rcClient.right, rcClient.bottom, SWP_NOZORDER);
+	}
+	break;
+	case WM_DROPFILES:
+	{
+		HDROP hDrop = (HDROP)wParam;
+		DragQueryFile(hDrop, 0, szFileName, MAX_PATH);
+		LoadTextFileToEdit(GetDlgItem(hwnd, IDC_MAIN_EDIT), szFileName);
+		DragFinish(hDrop);
 	}
 	break;
 	case WM_COMMAND:
