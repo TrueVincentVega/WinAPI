@@ -1,4 +1,5 @@
 #include<Windows.h>
+#include<CommCtrl.h>
 #include"resource.h"
 
 CONST CHAR szFilter[] = "Text files (*.txt)\0*.txt\0All files (*.*)\0*.*\0"; // cconst filter
@@ -176,17 +177,97 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		RegisterHotKey(hwnd, HOTKEY_OPEN, MOD_CONTROL, 'O');
 		RegisterHotKey(hwnd, HOTKEY_SAVE, MOD_CONTROL, 'S');
 		RegisterHotKey(hwnd, HOTKEY_SAVEAS, MOD_CONTROL + MOD_ALT, 'S');
-		RegisterHotKey(hwnd, HOTKEY_ABOUT,0, VK_F1);
+		RegisterHotKey(hwnd, HOTKEY_ABOUT, 0, VK_F1);
+		/////////////////////////////////////////////////////////////////
+		///////////////	TOOLBAR	/////////////////////////////////////////
+		/////////////////////////////////////////////////////////////////
+		HWND hTool = CreateWindowEx
+		(
+			0,
+			TOOLBARCLASSNAME,
+			NULL,
+			WS_CHILD | WS_VISIBLE,
+			0, 0,
+			0, 0,
+			hwnd,
+			(HMENU)IDC_MAIN_TOOL,
+			GetModuleHandle(NULL),
+			NULL
+		);
+		SendMessage(hTool, TB_BUTTONSTRUCTSIZE, (WPARAM)sizeof(TBBUTTON), 0);
+
+		TBBUTTON tbb[3];
+		TBADDBITMAP tbab;
+		tbab.hInst = HINST_COMMCTRL;
+		tbab.nID = IDB_STD_SMALL_COLOR;
+		SendMessage(hTool, TB_ADDBITMAP, 0, (LPARAM)&tbab);
+
+		ZeroMemory(&tbb, sizeof(tbb));
+		tbb[0].iBitmap = STD_FILENEW;
+		tbb[0].fsState = TBSTATE_ENABLED;
+		tbb[0].fsStyle = TBSTYLE_BUTTON;
+		tbb[0].idCommand = ID_FILE_NEW;
+
+		tbb[1].iBitmap = STD_FILEOPEN;
+		tbb[1].fsState = TBSTATE_ENABLED;
+		tbb[1].fsStyle = TBSTYLE_BUTTON;
+		tbb[1].idCommand = ID_FILE_OPEN;
+
+		tbb[2].iBitmap = STD_FILESAVE;
+		tbb[2].fsState = TBSTATE_ENABLED;
+		tbb[2].fsStyle = TBSTYLE_BUTTON;
+		tbb[2].idCommand = ID_FILE_SAVE;
+
+		SendMessage(hTool, TB_ADDBUTTONS, sizeof(tbb) / sizeof(TBBUTTON), (LPARAM)&tbb);
+		/////////////////////////////////////////////////////////////////
+		///////////////	STATUSBAR	/////////////////////////////////////
+		/////////////////////////////////////////////////////////////////
+		HWND hStatus = CreateWindowEx
+		(
+			0,
+			STATUSCLASSNAME,
+			NULL,
+			WS_CHILD | WS_VISIBLE | SBARS_SIZEGRIP,
+			0, 0,
+			0, 0,
+			hwnd,
+			(HMENU)IDC_MAIN_STATUS,
+			GetModuleHandle(NULL),
+			NULL
+		);
+
+		int statwidth[] = { 220, 150, -1 };
+		SendMessage(hStatus, SB_SETPARTS, sizeof(statwidth) / sizeof(int), (LPARAM)statwidth);
+		SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"This is a status mother fuckers bar...");
 		/////////////////////////////////////////////////////////////////
 	}
 	break;
 
 	case WM_SIZE: //дл€ того чтобы при раст€гивании окна скролбары мен€лись с ним
 	{
-		RECT rcClient;
+		/*RECT rcClient;
 		GetClientRect(hwnd, &rcClient);
 		HWND hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
-		SetWindowPos(hEdit, NULL, 0, 0, rcClient.right, rcClient.bottom, SWP_NOZORDER);
+		SetWindowPos(hEdit, NULL, 0, 0, rcClient.right, rcClient.bottom, SWP_NOZORDER);*/
+
+		HWND hTool = GetDlgItem(hwnd, IDC_MAIN_TOOL);
+		SendMessage(hTool, TB_AUTOSIZE, 0, 0);
+		RECT rcTool;
+		GetWindowRect(hTool, &rcTool);
+		int iToolHeight = rcTool.bottom - rcTool.top;
+
+		HWND hStatus = GetDlgItem(hwnd, IDC_MAIN_STATUS);
+		SendMessage(hStatus, WM_SIZE, 0, 0);
+		RECT rcStatus;
+		GetWindowRect(hStatus, &rcStatus);
+		int iStatusHeight = rcStatus.bottom - rcStatus.top;
+
+
+		HWND hEdit = GetDlgItem(hwnd, IDC_MAIN_EDIT);
+		RECT rcClient;
+		GetClientRect(hwnd, &rcClient);
+		int iEditHeight = rcClient.bottom - iToolHeight - iStatusHeight;
+		SetWindowPos(hEdit, NULL, 0,iToolHeight, rcClient.right, iEditHeight, SWP_NOZORDER);
 	}
 	break;
 	case WM_DROPFILES:
